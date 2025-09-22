@@ -1,4 +1,5 @@
 import whisper
+import ollama
 import librosa
 import soundfile as sf
 import numpy as np
@@ -14,7 +15,17 @@ def guard(sentence: str):
     Returns:
         bool value
     '''
-    return (random.randint(1, 10) % 2 == 1)
+    response = ollama.chat(
+        model="llama-guard3:1b",
+        messages=[
+            {"role": "system", "content": sentence}
+            ]
+    )
+    judge = response["message"]["content"].split()
+    if judge[0] == "safe":
+        return False # False means should not remove
+    else:
+        return True # True means should remove
 
 def transcribe_with_timestamps(audio_file):
     model = whisper.load_model("base")
