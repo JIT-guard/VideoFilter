@@ -1,4 +1,5 @@
 import whisper
+import torch
 import ollama
 import librosa
 import soundfile as sf
@@ -15,20 +16,22 @@ def guard(sentence: str):
     Returns:
         bool value
     '''
+    print(sentence)
     response = ollama.chat(
-        model="llama-guard3:1b",
+        model="llama-guard3:8b",
         messages=[
-            {"role": "system", "content": sentence}
+            {"role": "user", "content": sentence}
             ]
     )
     judge = response["message"]["content"].split()
+    print(judge[0])
     if judge[0] == "safe":
         return False # False means should not remove
     else:
         return True # True means should remove
 
 def transcribe_with_timestamps(audio_file):
-    model = whisper.load_model("base")
+    model = whisper.load_model("base", device="cuda")
     result = model.transcribe(audio_file, word_timestamps=True)
     return result
 
@@ -102,7 +105,11 @@ def filter_sentences_from_audio(result, should_remove_function, audio_file, outp
     print(f"Removed {len(removed_sentences)} sentences, kept {len(kept_segments)}")
     return removed_sentences
 
-audio_file_name = "t1.m4a"
+print(torch.__version__)
+print(torch.cuda.is_available())
+print(torch.cuda.get_device_name(0))
+torch.cuda.empty_cache()
+audio_file_name = "hate.wav"
 result = transcribe_with_timestamps(audio_file_name)
 final_audio = filter_sentences_from_audio(
     result=result,
