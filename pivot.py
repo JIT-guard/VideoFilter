@@ -4,10 +4,28 @@ import librosa
 import soundfile as sf
 import numpy as np
 import random
+from detoxify import Detoxify
+
+def DEX(sentence: str):
+    '''
+    Judge if the sentence should be removed using detoxify
+
+    Args:
+        sentence: string
+
+    Returns:
+        bool value
+    '''
+    model = Detoxify('original')
+    scores = model.predict(sentence)
+    if max(scores.values()) > 0.5:
+        return True
+    else:
+        return False
 
 def guard(sentence: str):
     '''
-    Judge if the sentence should be removed
+    Judge if the sentence should be removed using llamaguard
 
     Args:
         sentence: string
@@ -16,10 +34,10 @@ def guard(sentence: str):
         bool value
     '''
     response = ollama.chat(
-        model="llama-guard3:1b",
+        model="llama-guard3:8b",
         messages=[
-            {"role": "system", "content": sentence}
-            ]
+            {"role": "user", "content": sentence}
+            ],
     )
     judge = response["message"]["content"].split()
     if judge[0] == "safe":
@@ -59,8 +77,10 @@ def filter_sentences_from_audio(result, should_remove_function, audio_file, outp
         start_sample = int(start_time * sr)
         end_sample = int(end_time * sr)
         
+        should_remove = DEX(sentence) # use detoxify instead of llamaguard
+        # should_remove = should_remove_function(sentence)
+
         # Call your custom function to decide if sentence should be removed
-        should_remove = should_remove_function(sentence)
         
         if should_remove:
             removed_sentences.append({
@@ -102,7 +122,13 @@ def filter_sentences_from_audio(result, should_remove_function, audio_file, outp
     print(f"Removed {len(removed_sentences)} sentences, kept {len(kept_segments)}")
     return removed_sentences
 
-audio_file_name = "t1.m4a"
+def SilenceWarning():
+    '''remove warnings for demos'''
+    import warnings
+    warnings.filterwarnings("ignore")
+
+SilenceWarning()
+audio_file_name = "hate.mp4"
 result = transcribe_with_timestamps(audio_file_name)
 final_audio = filter_sentences_from_audio(
     result=result,
